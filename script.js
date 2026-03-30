@@ -1,50 +1,87 @@
-const drawCanvas = document.getElementById("drawCanvas");
-const drawCtx = drawCanvas.getContext("2d");
-
+const canvas = document.getElementById("mainCanvas");
+const ctx = canvas.getContext("2d");
 const preview = document.getElementById("preview");
+const brush = document.getElementById("brushSize");
 
 let img = new Image();
 let drawing = false;
+let showMask = false;
 
-// Upload image
+// Hidden mask canvas
+const maskCanvas = document.createElement("canvas");
+const maskCtx = maskCanvas.getContext("2d");
+
+// Upload
 document.getElementById("upload").addEventListener("change", function(e) {
-    const file = e.target.files[0];
     const reader = new FileReader();
 
     reader.onload = function(event) {
         img.onload = function() {
-            drawCanvas.width = img.width;
-            drawCanvas.height = img.height;
+            canvas.width = img.width;
+            canvas.height = img.height;
 
-            // ❌ Do NOT draw image (invisible drawing area)
-            drawCtx.fillStyle = "black";
-            drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+            maskCanvas.width = img.width;
+            maskCanvas.height = img.height;
+
+            // Fill mask black (nothing revealed)
+            maskCtx.fillStyle = "black";
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+            drawMain();
         };
         img.src = event.target.result;
     };
 
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(e.target.files[0]);
 });
 
-// Draw (invisible to user)
-drawCanvas.addEventListener("mousedown", () => drawing = true);
-drawCanvas.addEventListener("mouseup", () => drawing = false);
+// Draw visible canvas
+function drawMain() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-drawCanvas.addEventListener("mousemove", function(e) {
+    // Show original image
+    ctx.drawImage(img, 0, 0);
+
+    if (showMask) {
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(maskCanvas, 0, 0);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// Drawing
+canvas.addEventListener("mousedown", () => drawing = true);
+canvas.addEventListener("mouseup", () => drawing = false);
+
+canvas.addEventListener("mousemove", function(e) {
     if (!drawing) return;
 
-    const rect = drawCanvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Draw mask (white = reveal)
-    drawCtx.fillStyle = "white";
-    drawCtx.beginPath();
-    drawCtx.arc(x, y, 20, 0, Math.PI * 2);
-    drawCtx.fill();
+    // 🔥 Soft brush
+    const radius = brush.value;
+    const gradient = maskCtx.createRadialGradient(x, y, 0, x, y, radius);
+
+    gradient.addColorStop(0, "white");
+    gradient.addColorStop(1, "transparent");
+
+    maskCtx.fillStyle = gradient;
+    maskCtx.beginPath();
+    maskCtx.arc(x, y, radius, 0, Math.PI * 2);
+    maskCtx.fill();
+
+    drawMain();
 });
 
-// 🔥 Generate final result
+// Toggle mask view
+function toggleMask() {
+    showMask = !showMask;
+    drawMain();
+}
+
+// Generate result
 function generateResult() {
     const resultCanvas = document.createElement("canvas");
     const resultCtx = resultCanvas.getContext("2d");
@@ -52,16 +89,14 @@ function generateResult() {
     resultCanvas.width = img.width;
     resultCanvas.height = img.height;
 
-    // Draw original image
     resultCtx.drawImage(img, 0, 0);
 
     // Apply mask
     resultCtx.globalCompositeOperation = "destination-in";
-    resultCtx.drawImage(drawCanvas, 0, 0);
+    resultCtx.drawImage(maskCanvas, 0, 0);
 
     preview.src = resultCanvas.toDataURL("image/png");
 
-    // store for download
     window.finalImage = resultCanvas;
 }
 
@@ -70,7 +105,7 @@ function downloadImage() {
     if (!window.finalImage) return;
 
     const link = document.createElement("a");
-    link.download = "result.png";
+    link.download = "final.png";
     link.href = window.finalImage.toDataURL();
     link.click();
 }
