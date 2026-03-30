@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Advanced Erase Tool</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Invisible Erase Tool</title>
 </head>
 <body>
 
-<h2>🖌️ Erase Tool (Mini Photoshop)</h2>
+<h2>Draw (Invisible) → See Result</h2>
 
 <input type="file" id="upload"><br><br>
 
-<label>Brush Size:</label>
-<input type="range" id="brushSize" min="5" max="50" value="20">
-
-<button onclick="undo()">Undo</button>
+<button onclick="generateResult()">Show Result</button>
 <button onclick="downloadImage()">Download</button>
 
 <br><br>
 
-<canvas id="canvas"></canvas>
+<canvas id="drawCanvas"></canvas>
 
-<h3>Preview</h3>
+<h3>Result Image</h3>
 <img id="preview">
 
 <script src="script.js"></script>
