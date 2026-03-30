@@ -1,11 +1,10 @@
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const preview = document.getElementById("preview");
-const brushSlider = document.getElementById("brushSize");
+const drawCanvas = document.getElementById("drawCanvas");
+const drawCtx = drawCanvas.getContext("2d");
 
-let drawing = false;
+const preview = document.getElementById("preview");
+
 let img = new Image();
-let history = []; // for undo
+let drawing = false;
 
 // Upload image
 document.getElementById("upload").addEventListener("change", function(e) {
@@ -14,19 +13,12 @@ document.getElementById("upload").addEventListener("change", function(e) {
 
     reader.onload = function(event) {
         img.onload = function() {
-            canvas.width = img.width;
-            canvas.height = img.height;
+            drawCanvas.width = img.width;
+            drawCanvas.height = img.height;
 
-            ctx.drawImage(img, 0, 0);
-
-            // Overlay
-            ctx.fillStyle = "gray";
-            ctx.globalAlpha = 0.9;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.globalAlpha = 1;
-
-            saveState();
-            updatePreview();
+            // ❌ Do NOT draw image (invisible drawing area)
+            drawCtx.fillStyle = "black";
+            drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
         };
         img.src = event.target.result;
     };
@@ -34,59 +26,51 @@ document.getElementById("upload").addEventListener("change", function(e) {
     reader.readAsDataURL(file);
 });
 
-// Mouse events
-canvas.addEventListener("mousedown", () => {
-    drawing = true;
-    saveState(); // save before drawing
-});
+// Draw (invisible to user)
+drawCanvas.addEventListener("mousedown", () => drawing = true);
+drawCanvas.addEventListener("mouseup", () => drawing = false);
 
-canvas.addEventListener("mouseup", () => {
-    drawing = false;
-    updatePreview();
-});
-
-canvas.addEventListener("mousemove", function(e) {
+drawCanvas.addEventListener("mousemove", function(e) {
     if (!drawing) return;
 
-    const rect = canvas.getBoundingClientRect();
+    const rect = drawCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, brushSlider.value, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw mask (white = reveal)
+    drawCtx.fillStyle = "white";
+    drawCtx.beginPath();
+    drawCtx.arc(x, y, 20, 0, Math.PI * 2);
+    drawCtx.fill();
 });
 
-// Save state for undo
-function saveState() {
-    history.push(canvas.toDataURL());
-    if (history.length > 20) history.shift();
-}
+// 🔥 Generate final result
+function generateResult() {
+    const resultCanvas = document.createElement("canvas");
+    const resultCtx = resultCanvas.getContext("2d");
 
-// Undo
-function undo() {
-    if (history.length > 0) {
-        const last = history.pop();
-        let imgState = new Image();
-        imgState.src = last;
-        imgState.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(imgState, 0, 0);
-            updatePreview();
-        };
-    }
-}
+    resultCanvas.width = img.width;
+    resultCanvas.height = img.height;
 
-// Preview update
-function updatePreview() {
-    preview.src = canvas.toDataURL("image/png");
+    // Draw original image
+    resultCtx.drawImage(img, 0, 0);
+
+    // Apply mask
+    resultCtx.globalCompositeOperation = "destination-in";
+    resultCtx.drawImage(drawCanvas, 0, 0);
+
+    preview.src = resultCanvas.toDataURL("image/png");
+
+    // store for download
+    window.finalImage = resultCanvas;
 }
 
 // Download
 function downloadImage() {
+    if (!window.finalImage) return;
+
     const link = document.createElement("a");
-    link.download = "edited.png";
-    link.href = canvas.toDataURL("image/png");
+    link.download = "result.png";
+    link.href = window.finalImage.toDataURL();
     link.click();
 }
