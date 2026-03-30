@@ -1,22 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Invisible Erase Tool</title>
+  <title>Pro Erase Tool</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>Draw (Invisible) → See Result</h2>
+<h2>🧠 Smart Erase Tool</h2>
 
 <input type="file" id="upload"><br><br>
 
+<label>Brush Size:</label>
+<input type="range" id="brushSize" min="5" max="60" value="25">
+
+<button onclick="toggleMask()">Show/Hide Mask</button>
 <button onclick="generateResult()">Show Result</button>
 <button onclick="downloadImage()">Download</button>
 
 <br><br>
 
-<canvas id="drawCanvas"></canvas>
+<canvas id="mainCanvas"></canvas>
 
-<h3>Result Image</h3>
+<h3>Result</h3>
 <img id="preview">
 
 <script src="script.js"></script>
